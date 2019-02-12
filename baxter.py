@@ -91,7 +91,7 @@ class baxter(object):
 			return False
 		else : 
 			print('Start Moving to the Pose')
-			self._limb.move_to_joint_positions(limb_joints)
+			self._limb.move_to_joint_positions(limb_joints,timeout=10.0)
 			return True
 		
 

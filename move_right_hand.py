@@ -57,14 +57,32 @@ def ik_test():
     iksvc = rospy.ServiceProxy(ns, SolvePositionIK)
     ikreq = SolvePositionIKRequest()
     hdr = Header(stamp=rospy.Time.now(), frame_id='base')
+    # poses = {
+    #     'right': PoseStamped(
+    #         header=hdr,
+    #         pose=Pose(
+    #             position=Point(
+    #                 x=0.675,
+    #                 y=0.0,
+    #                 z=0.4,
+    #             ),
+    #             orientation=Quaternion(
+    #                 x=0.0,
+    #                 y=1.0,
+    #                 z=0.0,
+    #                 w=0.0,
+    #             ),
+    #         ),
+    #     ),
+    # }
     poses = {
         'right': PoseStamped(
             header=hdr,
             pose=Pose(
                 position=Point(
-                    x=0.675,
-                    y=0.0,
-                    z=0.4,
+                    x=0.615,
+                    y=0.02,
+                    z=-0.16
                 ),
                 orientation=Quaternion(
                     x=0.0,

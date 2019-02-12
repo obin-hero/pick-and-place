@@ -118,36 +118,7 @@ def init_baxter():
 #     def predict(self,inputs):
 #         pred_y = self.sess.run(self.output, feed_dict={self.input : inputs})
 #         return pred_y
-class Model(object):
-    def __init__(self, sess, name, input_size, output_size, BATCH_SIZE, LEARNING_RATE, HIDDEN_UNITS):
-        self.sess = sess
-        self.batch_size = BATCH_SIZE
-        self.learning_rate = LEARNING_RATE
-        self.input = tf.placeholder(tf.float32, [None, input_size])
-        self.target = tf.placeholder(tf.float32, [None, output_size])
-        self.training = tf.placeholder(tf.bool) 
-        if 'ori' in name : 
-            with tf.variable_scope(name):
-                init = tf.contrib.layers.xavier_initializer()
-                x = tf.layers.dense(self.input, HIDDEN_UNITS, kernel_initializer=init)	
-                self.output = tf.layers.dense(x,output_size, kernel_initializer = init)
-                self.mse_loss = tf.reduce_mean(tf.square(self.target - self.output))
-                self.optimize = tf.train.AdamOptimizer(self.learning_rate).minimize(self.mse_loss)
-                sess.run(tf.global_variables_initializer())
-        else :
-            with tf.variable_scope(name):
-                init = tf.contrib.layers.xavier_initializer()
-                self.output = tf.layers.dense(self.input, output_size, kernel_initializer=init)
-                self.mse_loss = tf.reduce_mean(tf.square(self.target - self.output))
-                self.optimize = tf.train.AdamOptimizer(self.learning_rate).minimize(self.mse_loss)
-                sess.run(tf.global_variables_initializer())
-        
-    def predict(self,inputs,pick_info = None):
-        #if pick_info is not None : feed_dict = {self.input : inputs, self.pick_info : pick_info }
-        feed_dict = {self.input : inputs,self.training : False }
-        pred_y = self.sess.run(self.output, feed_dict=feed_dict)
-        return pred_y
-    
+
 
 
 def main():
