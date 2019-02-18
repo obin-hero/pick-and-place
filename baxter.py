@@ -28,7 +28,7 @@ class baxter(object):
 		self._limb = baxter_interface.Limb('right')
 		self._gripper = baxter_interface.Gripper('right')
 		self.hover_distance = hover_distance
-		self.safety_distance = 0.02
+		self.safety_distance = 0.01
 		self._rs = baxter_interface.RobotEnable(baxter_interface.CHECK_VERSION)
 		self._init_state = self._rs.state().enabled
 		self._verbose = True
@@ -82,7 +82,7 @@ class baxter(object):
 	        return False
 	    return limb_joints
 
-	def move_to(self,pose):
+	def move_to(self,pose,timeout=10.0):
 		self._iksvc = rospy.ServiceProxy(self.ns,SolvePositionIK)
 		self._ikreq = SolvePositionIKRequest()
 		limb_joints = self.ik_request(pose)
@@ -91,7 +91,7 @@ class baxter(object):
 			return False
 		else : 
 			print('Start Moving to the Pose')
-			self._limb.move_to_joint_positions(limb_joints,timeout=10.0)
+			self._limb.move_to_joint_positions(limb_joints)
 			return True
 		
 
@@ -156,7 +156,7 @@ class baxter(object):
 		rospy.sleep(self.wait)
 		if move_return == False : return False
 		print("2. hands down")
-		self.move_to(pose)
+		self.move_to(pose,timeout=5)
 		for i in range(6):
 			f = self._limb.endpoint_effort()['force'].z
 			if f <= -5 :
