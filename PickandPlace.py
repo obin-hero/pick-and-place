@@ -28,20 +28,14 @@ class Model(object):
             self.output = tf.layers.dense(x, output_size, kernel_initializer=init)
             self.mse_loss = tf.reduce_mean(tf.square(self.target - self.output))
             self.optimize = tf.train.AdamOptimizer(self.learning_rate).minimize(self.mse_loss)
-            sess.run(tf.global_variables_initializer())
-#         else : 
-            
-#             with tf.variable_scope(name):
-#                 init = tf.contrib.layers.xavier_initializer()
-#                 self.output = tf.layers.dense(self.input, output_size, kernel_initializer=init)
-#                 self.mse_loss = tf.reduce_mean(tf.square(self.target - self.output))
-#                 self.optimize = tf.train.AdamOptimizer(self.learning_rate).minimize(self.mse_loss)
-#                 sess.run(tf.global_variables_initializer())
         
     def predict(self,inputs,pick_info = None):
 
         feed_dict = {self.input : inputs,self.training : False}
         pred_y = self.sess.run(self.output, feed_dict=feed_dict)
+        return pred_y
+    
+
         return pred_y
 
 def pretty_print_input(arr, ori = False):
@@ -90,22 +84,21 @@ class PnP(object):
 		#rospy.init_node("pick_and_place")
 		print('Load Pick and Place Network')
 
-		self.pick_pose_model = Model(sess,'pick_pose', 2, 2)
-		self.pick_z_model = Model(sess,'pick_z', 1, 1)
+		self.pick_pose_model = Model(sess,'pick_pose', 3, 3)
 		self.pick_ori_models = []
 		for i in range(3): 
 		    pick_ori_model = Model(sess,'pick_ori_'+str(i), 3, 4)
 		    self.pick_ori_models.append(pick_ori_model)
 		# pick 7 
-		self.place_pose_model = Model(sess,'place_pose', 2, 2)
+		self.place_pose_model = Model(sess,'place_pose', 6, 3)
 		self.place_z_model = Model(sess,'place_z', 1, 1)
 		self.place_ori_models = []
 		for i in range(3): 
-		    place_ori_model = Model(sess,'place_ori_'+str(i),3,4)
+		    place_ori_model = Model(sess,'place_ori_'+str(i),7,4)
 		    self.place_ori_models.append(place_ori_model)
 
 		saver = tf.train.Saver()
-		checkpoint = tf.train.get_checkpoint_state("saved_networks/pnp")
+		checkpoint = tf.train.get_checkpoint_state("saved_networks/to")
 		if checkpoint and checkpoint.model_checkpoint_path:
 			saver.restore(sess, checkpoint.model_checkpoint_path)
 			print("Successfully loaded:", checkpoint.model_checkpoint_path)
@@ -141,15 +134,17 @@ class PnP(object):
 			answer = []
 
 			x = np.array(self.preprocess_data(input_arr,depth_image))
-			answer.extend(np.squeeze(self.pick_pose_model.predict(x[0:2].reshape(-1,2))))
-			answer.extend(self.pick_z_model.predict(x[2].reshape(-1,1))[0])
+			pre_pos = np.squeeze(self.pick_pose_model.predict(x[0:3].reshape(-1,3)))
 			pick_ori_model = self.pick_ori_models[int(x[3])]
-			answer.extend(pick_ori_model.predict(x[0:3].reshape(-1,3))[0])
+			pre_ori = pick_ori_model.predict(x[0:3].reshape(-1,3))[0]
+			answer.extend(pre_ori)
+			answer.extend(pre_pos)
 
-			answer.extend(self.place_pose_model.predict(x[4:6].reshape(-1,2))[0])
-			answer.extend(self.place_z_model.predict(x[6].reshape(-1,1))[0])
+			inp = np.concatenate([x[4:7],pre_pos]).reshape(-1,6)
+			answer.extend(self.place_pose_model.predict(inp)[0])
 			place_ori_model = self.place_ori_models[int(x[7])]
-			answer.extend(place_ori_model.predict(x[4:7].reshape(-1,3))[0])
+			inp = np.concatenate([x[4:7],pre_ori]).reshape(-1,7)
+			answer.extend(place_ori_model.predict(inp)[0])
 
 			move_return = self.move_baxter(np.array(answer),state,'pnp')
 			if move_return == 0 : 
@@ -170,82 +165,82 @@ class PnP(object):
 				state = 'picked'
 				continue
 
-	def pick(self,input_arr,depth_image):
+	# def pick(self,input_arr,depth_image):
 
-		'''
+	# 	'''
 
-		* input_arr shape(3,1) or (2,1)
+	# 	* input_arr shape(3,1) or (2,1)
 
-		[pixel_x, pixel_y, pick_orientation] or [pixel_x, pixel_y]
+	# 	[pixel_x, pixel_y, pick_orientation] or [pixel_x, pixel_y]
 
-		- if orientation is not specified, we'll set it to 0
+	# 	- if orientation is not specified, we'll set it to 0
 		
-		* pick_orientation
-		which direction should the robot pick a block, 
-		horizontally - 0, vertical & in the right - 1, vertical & in the left -2
+	# 	* pick_orientation
+	# 	which direction should the robot pick a block, 
+	# 	horizontally - 0, vertical & in the right - 1, vertical & in the left -2
 
-		'''
-		print('Start Picking')
+	# 	'''
+	# 	print('Start Picking')
 		
-		state = 'start'
-		for i in range(self.retry):
-			answer = []
-			x = np.array(self.preprocess_data(input_arr,depth_image))
+	# 	state = 'start'
+	# 	for i in range(self.retry):
+	# 		answer = []
+	# 		x = np.array(self.preprocess_data(input_arr,depth_image))
 			
-			answer.extend(np.squeeze(self.pick_pose_model.predict(x[0:2].reshape(-1,2))))
-			answer.extend(self.pick_z_model.predict(x[2].reshape(-1,1))[0])
-			pick_ori_model = self.pick_ori_models[int(x[3])]
-			answer.extend(pick_ori_model.predict(x[0:3].reshape(-1,3))[0])
+	# 		answer.extend(np.squeeze(self.pick_pose_model.predict(x[0:2].reshape(-1,2))))
+	# 		answer.extend(self.pick_z_model.predict(x[2].reshape(-1,1))[0])
+	# 		pick_ori_model = self.pick_ori_models[int(x[3])]
+	# 		answer.extend(pick_ori_model.predict(x[0:3].reshape(-1,3))[0])
 
-			move_return = self.move_baxter(np.array(answer),state,'pick')
-			if move_return == 0 : 
-				print('nice!')
-				break
-			elif move_return == 1 :
-				# pick falied
-				print('retry pick {0}'.format(i))
-				input_arr[0] += np.random.randint(-1,2)*5
-				input_arr[1] += np.random.randint(-1,2)*5
-				state = 'start'
-				continue
+	# 		move_return = self.move_baxter(np.array(answer),state,'pick')
+	# 		if move_return == 0 : 
+	# 			print('nice!')
+	# 			break
+	# 		elif move_return == 1 :
+	# 			# pick falied
+	# 			print('retry pick {0}'.format(i))
+	# 			input_arr[0] += np.random.randint(-1,2)*5
+	# 			input_arr[1] += np.random.randint(-1,2)*5
+	# 			state = 'start'
+	# 			continue
 
-	def place(self,input_arr,depth_image):
+	# def place(self,input_arr,depth_image):
 
-		'''
+	# 	'''
 
-		* input_arr shape(3,1) or (2,1)
+	# 	* input_arr shape(3,1) or (2,1)
 
-		[pixel_x, pixel_y, pick_orientation] or [pixel_x, pixel_y]
+	# 	[pixel_x, pixel_y, pick_orientation] or [pixel_x, pixel_y]
 
-		- if orientation is not specified, we'll set it to 0
+	# 	- if orientation is not specified, we'll set it to 0
 		
-		* pick_orientation
-		which direction should the robot pick a block, 
-		horizontally - 0, vertical & in the right - 1, vertical & in the left -2
+	# 	* pick_orientation
+	# 	which direction should the robot pick a block, 
+	# 	horizontally - 0, vertical & in the right - 1, vertical & in the left -2
 
-		'''
-		print('Start Placing')
+	# 	'''
+	# 	print('Start Placing')
 		
-		state = 'start'
-		for i in range(self.retry):
-			answer = []
-			x = np.array(self.preprocess_data(input_arr,depth_image))			
-			answer.extend(self.place_pose_model.predict(x[0:2].reshape(-1,2))[0])
-			answer.extend(self.place_z_model.predict(x[2].reshape(-1,1))[0])
-			place_ori_model = self.place_ori_models[int(x[3])]
-			answer.extend(place_ori_model.predict(x[0:3].reshape(-1,3))[0])
+	# 	state = 'start'
+	# 	for i in range(self.retry):
+	# 		answer = []
+	# 		x = np.array(self.preprocess_data(input_arr,depth_image))			
+	# 		answer.extend(self.place_pose_model.predict(x[0:2].reshape(-1,2))[0])
+	# 		answer.extend(self.place_z_model.predict(x[2].reshape(-1,1))[0])
+	# 		place_ori_model = self.place_ori_models[int(x[3])]
+	# 		answer.extend(place_ori_model.predict(x[0:3].reshape(-1,3))[0])
 
-			move_return = self.move_baxter(np.array(answer),state,'place')
-			if move_return == 0 : 
-				print('nice!')
-				break
-			elif move_return == 1 :
-				# pick falied
-				print('retry pick {0}'.format(i))
-				input_arr[0] += np.random.randint(-1,2)*5
-				input_arr[1] += np.random.randint(-1,2)*5
-				state = 'start'
-				continue
+	# 		move_return = self.move_baxter(np.array(answer),state,'place')
+	# 		if move_return == 0 : 
+	# 			print('nice!')
+	# 			break
+	# 		elif move_return == 1 :
+	# 			# pick falied
+	# 			print('retry pick {0}'.format(i))
+	# 			input_arr[0] += np.random.randint(-1,2)*5
+	# 			input_arr[1] += np.random.randint(-1,2)*5
+	# 			state = 'start'
+	# 			continue
 
 
 	def preprocess_data(self, input_arr, depth_image):

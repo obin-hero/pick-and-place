@@ -31,12 +31,6 @@ def draw_circle(event,x,y,flags,param):
         mouseX,mouseY = x,y
         print('point x:{0}, y:{1}'.format(mouseX,mouseY))
 
-
-def transition(pix_x,pix_y):
-	real_x = (pix_y - 17) * 0.00165 - 0.5
-	real_y = (pix_x - 17) * 0.00185 + 0.18
-	return real_x, real_y
-
 def move_baxter(poses=None, state = 'start'):
 	robot = baxter()
 
@@ -79,45 +73,6 @@ def init_baxter():
 	pose = Pose(position=position, orientation=orientation)
 	robot.gripper_open()
 	robot.move_to(pose)
-
-# class Model(object):
-#     def __init__(self, sess, input_size, output_size, BATCH_SIZE, LEARNING_RATE, HIDDEN_UNITS):
-#         self.sess = sess
-#         self.batch_size = BATCH_SIZE
-#         self.learning_rate = LEARNING_RATE
-#         self.input = tf.placeholder(tf.float32, [None, input_size])
-#         self.target = tf.placeholder(tf.float32, [None, output_size])
-        
-#         init = tf.contrib.layers.xavier_initializer()
-#         x = tf.layers.dense(self.input, HIDDEN_UNITS, activation=tf.nn.leaky_relu, kernel_initializer=init)     
-
-#         s_p = tf.layers.dense(x, HIDDEN_UNITS, activation=tf.nn.leaky_relu, kernel_initializer=init)
-#         s_p = tf.layers.dense(s_p, 3, activation=tf.nn.leaky_relu, kernel_initializer=init)
-
-#         s_o = tf.layers.dense(x, HIDDEN_UNITS, activation=tf.nn.leaky_relu, kernel_initializer=init)
-#         s_o = tf.layers.dense(s_o, 4, activation=tf.nn.leaky_relu, kernel_initializer=init)
-
-#         g_p = tf.layers.dense(x, HIDDEN_UNITS, activation=tf.nn.leaky_relu, kernel_initializer=init)
-#         g_p = tf.layers.dense(g_p, 3, activation=tf.nn.leaky_relu, kernel_initializer=init)
-        
-#         g_o = tf.layers.dense(x, HIDDEN_UNITS, activation=tf.nn.leaky_relu, kernel_initializer=init)
-#         g_o = tf.layers.dense(g_o, 4, activation=tf.nn.leaky_relu, kernel_initializer=init)
-        
-#         self.out_start = tf.concat([s_p,s_o],-1)
-#         self.out_goal = tf.concat([g_p,g_o],-1)
-
-
-#         self.output = tf.concat([self.out_start,self.out_goal],-1)
-        
-#         self.mse_loss = tf.reduce_mean(tf.square(self.target - self.output))
-#         # weight_decay = tf.add_n([0.01*tf.nn.l2_loss(var) for var in self.weights if "kernel" in var.name])
-#         self.optimizer = tf.train.AdamOptimizer(self.learning_rate)
-#         self.optimize = self.optimizer.minimize(self.mse_loss)
-#         self.sess.run(tf.global_variables_initializer())
-        
-#     def predict(self,inputs):
-#         pred_y = self.sess.run(self.output, feed_dict={self.input : inputs})
-#         return pred_y
 
 
 
@@ -345,10 +300,6 @@ def main():
 				# 		state = 'picked'
 				# 		continue
 
-
-
-
-	        
 
 	finally:
 	    pipeline.stop()
