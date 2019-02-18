@@ -91,7 +91,7 @@ class PnP(object):
 		    self.pick_ori_models.append(pick_ori_model)
 		# pick 7 
 		self.place_pose_model = Model(sess,'place_pose', 6, 3)
-		self.place_z_model = Model(sess,'place_z', 1, 1)
+		#self.place_z_model = Model(sess,'place_z', 1, 1)
 		self.place_ori_models = []
 		for i in range(3): 
 		    place_ori_model = Model(sess,'place_ori_'+str(i),7,4)
@@ -132,13 +132,14 @@ class PnP(object):
 		for i in range(self.retry):
 			print('retry?')
 			answer = []
-
+			print(input_arr)
 			x = np.array(self.preprocess_data(input_arr,depth_image))
+			print('x : ',x)
 			pre_pos = np.squeeze(self.pick_pose_model.predict(x[0:3].reshape(-1,3)))
 			pick_ori_model = self.pick_ori_models[int(x[3])]
 			pre_ori = pick_ori_model.predict(x[0:3].reshape(-1,3))[0]
-			answer.extend(pre_ori)
 			answer.extend(pre_pos)
+			answer.extend(pre_ori)
 
 			inp = np.concatenate([x[4:7],pre_pos]).reshape(-1,6)
 			answer.extend(self.place_pose_model.predict(inp)[0])
@@ -285,7 +286,7 @@ class PnP(object):
 			goal_depth = depth_image[goal_pix_y,goal_pix_x]
 
 			arr = [start_pix_x, start_pix_y, start_depth, pick_ori, goal_pix_x, goal_pix_y, goal_depth, place_ori]
-			pretty_print_input(arr)
+			pretty_print_input(arr,True)
 			
 			start_x, start_y = (np.array([start_pix_x,start_pix_y])-128)/128.0
 			goal_x, goal_y = (np.array([goal_pix_x,goal_pix_y])-128)/128.0

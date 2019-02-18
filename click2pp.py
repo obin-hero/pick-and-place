@@ -256,7 +256,13 @@ def main():
 
 			elif key & 0xFF == ord('5'):
 				print("move...>!!!!")
+				start_pix_x -= 5
+				start_pix_y -= 10
+				goal_pix_x -= 5
+				goal_pix_y -= 10
+				
 				pnp.pick_and_place([start_pix_x, start_pix_y, 0, goal_pix_x, goal_pix_y, 0],depth_image)
+				
 				# mean_depth = 713.3002964231947
 				# state = 'start'
 				# for i in range(6):
