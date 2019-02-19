@@ -31,7 +31,7 @@ class baxter(object):
 		self.safety_distance = 0.01
 		self._rs = baxter_interface.RobotEnable(baxter_interface.CHECK_VERSION)
 		self._init_state = self._rs.state().enabled
-		self._verbose = True
+		self._verbose = False
 		print("Enabling robot... ")
 		self._rs.enable()
 		self.wait = 3.0
@@ -95,23 +95,6 @@ class baxter(object):
 			return True
 		
 
-
-
-	# def _retract(self):
- #        # retrieve current pose from endpoint
- #        current_pose = self._limb.endpoint_pose()
- #        ik_pose = Pose()
- #        ik_pose.position.x = current_pose['position'].x
- #        ik_pose.position.y = current_pose['position'].y
- #        ik_pose.position.z = current_pose['position'].z + self._hover_distance
- #        ik_pose.orientation.x = current_pose['orientation'].x
- #        ik_pose.orientation.y = current_pose['orientation'].y
- #        ik_pose.orientation.z = current_pose['orientation'].z
- #        ik_pose.orientation.w = current_pose['orientation'].w
- #        joint_angles = self.ik_request(ik_pose)
- #        # servo up from current pose
- #        self._guarded_move_to_joint_position(joint_angles)
-
 	def pick(self,pose):
 		print('='*50)
 		print('Start picking up')
@@ -129,7 +112,7 @@ class baxter(object):
 		move_return = self.move_to(pose)
 		f = self._limb.endpoint_effort()['force'].z
 		if f <= -5 :
-			print('move up slightly')
+			print('f - {0} - move up slightly'.format(f))
 			pose.position.z += self.safety_distance
 			move_return = self.move_to(pose)
 			rospy.sleep(self.wait)
@@ -160,7 +143,7 @@ class baxter(object):
 		for i in range(6):
 			f = self._limb.endpoint_effort()['force'].z
 			if f <= -5 :
-				print('move up slightly')
+				print('f - {0} - move up slightly'.format(f))
 				pose.position.z += self.safety_distance
 				self.move_to(pose)
 				rospy.sleep(self.wait)

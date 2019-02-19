@@ -211,8 +211,18 @@ class PnP(object):
 			pretty_print_input(arr,True)
 			
 			start_x, start_y = (np.array([start_pix_x,start_pix_y])-128)/128.0
+			print("start x {0}, start y {1}".format(start_x,start_y))
+
+			ad = np.power([start_x, start_y],3) * np.power(start_depth, 3) * 0.1
+			print("adjust {0}".format(ad))
+			start_x, start_y = np.array([start_x,start_y]) - ad
+			print("start x {0}, start y {1}".format(start_x,start_y))
 			goal_x, goal_y = (np.array([goal_pix_x,goal_pix_y])-128)/128.0
-			
+			print("goal x {0}, goal y {1}".format(goal_x,goal_y))
+			ad = np.power([goal_x, goal_y],3) * np.power(goal_depth, 3) * 0.1
+			print("adjust {0}".format(ad))
+			goal_x, goal_y = np.array([goal_x,goal_y]) - ad 
+			print("goal x {0}, goal y {1}".format(goal_x,goal_y))
 			return [start_x, start_y, start_depth, pick_ori, goal_x, goal_y, goal_depth, place_ori]
 
 
