@@ -107,16 +107,30 @@ class baxter(object):
 		move_return = self.move_to(up)
 		if move_return == False : return False
 		rospy.sleep(self.wait)
+		
 		print("2. hands down")
 		print(pose)
-		move_return = self.move_to(pose)
+		move_return = self.move_to(pose,timeout=5)	
+		curr_position_z = self._limb.endpoint_pose()['position'].z	
 		f = self._limb.endpoint_effort()['force'].z
-		if f <= -5 :
-			print('f - {0} - move up slightly'.format(f))
-			pose.position.z += self.safety_distance
-			move_return = self.move_to(pose)
+		retry = 1
+
+		while(f <= -5 and curr_position_z > -0.21):
+			move_return = self.move_to(up)
+			if retry%2 == 0 :
+				print('f - {0} - move right slightly'.format(f))
+				pose.position.y += self.safety_distance*retry
+				move_return = self.move_to(pose, timeout=5)
+			else :
+				print('f - {0} - move left slightly'.format(f))
+				pose.position.y -= self.safety_distance*retry
+				move_return = self.move_to(pose, timeout=5)
 			rospy.sleep(self.wait)
-		rospy.sleep(self.wait)
+			f = self._limb.endpoint_effort()['force'].z
+
+			retry += 1
+			if retry >= 6 : break
+		#rospy.sleep(self.wait)
 		if move_return == False : return False
 		
 		print("3. grab")
@@ -140,13 +154,50 @@ class baxter(object):
 		if move_return == False : return False
 		print("2. hands down")
 		self.move_to(pose,timeout=5)
-		for i in range(6):
-			f = self._limb.endpoint_effort()['force'].z
-			if f <= -5 :
-				print('f - {0} - move up slightly'.format(f))
-				pose.position.z += self.safety_distance
-				self.move_to(pose)
-				rospy.sleep(self.wait)
+		curr_position_z = self._limb.endpoint_pose()['position'].z	
+		f = self._limb.endpoint_effort()['force'].z
+		
+		orig_position = copy.deepcopy(pose)		
+		retry = 1
+		safety_distance = copy.deepcopy(self.safety_distance)
+
+		if f <= - 5 :
+			if curr_position_z-pose.position.z>0.25 
+				while(f <= -5 and curr_position_z - pose.position.z > 0.25):
+					move_return = self.move_to(up)
+					if retry%4 == 0 :
+						print('f - {0} - move back slightly'.format(f))
+						pose.position.x =  orig_position.position.x - safety_distance
+						move_return = self.move_to(pose, timeout=5)
+					elif retry%4 == 1:
+						print('f - {0} - move forward slightly'.format(f))
+						pose.position.x =  orig_position.position.x + safety_distance
+						move_return = self.move_to(pose, timeout=5)
+					elif retry%4 == 2:
+						print('f - {0} - move right slightly'.format(f))
+						pose.position.y =  orig_position.position.y + safety_distance
+						move_return = self.move_to(pose, timeout=5)
+					elif retry%4 == 3:
+						print('f - {0} - move left slightly'.format(f))
+						pose.position.y =  orig_position.position.y - safety_distance
+						move_return = self.move_to(pose, timeout=5)				
+
+					rospy.sleep(self.wait)
+					f = self._limb.endpoint_effort()['force'].z
+
+					retry += 1
+					if retry == 5 : 
+						safety_distance *= 2
+					if retry >= 9 : break
+
+			else :
+				for i in range(6):
+					print('f - {0} - move up slightly'.format(f))
+					pose.position.z += self.safety_distance
+					self.move_to(pose,timeout=5)
+					rospy.sleep(self.wait)
+					f = self._limb.endpoint_effort()['force'].z
+					if f > -5 : break
 		rospy.sleep(self.wait)
 		print("3. let it go")
 		self.gripper_open()
