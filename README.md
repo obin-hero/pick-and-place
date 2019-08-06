@@ -4,7 +4,11 @@
 source baxter_real.sh
 python click2pp.py
 ```
-make sure you are connected with the correct wi-fi network
+### make sure
+1. you are connected with the correct wi-fi network
+2. ROS is installed - if it is not kinetic, you should edit baxter_real.sh
+3. realsense library is installed - `pip install pyrealsense2` may be..?
+- you might need to install librealsense 
 
 
 #### if you are able to load the saved network
