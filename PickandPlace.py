@@ -235,11 +235,12 @@ class PnP(object):
 		if mode == 'pnp':
 			print('pick and place mode')
 			s_px, s_py, s_pz, s_ox, s_oy, s_oz, s_ow, g_px, g_py, g_pz, g_ox, g_oy, g_oz, g_ow = poses
+                        if s_pz < -0.2 : s_pz = - 0.2
+			position = Point(x = s_px, y=s_py, z= s_pz-0.005)
 
-			position = Point(x = s_px, y=s_py, z= s_pz)
 			orientation = Quaternion(x=s_ox,y=s_oy,z=s_oz,w=s_ow)
 			start_pose = Pose(position=position, orientation=orientation)
-			position = Point(x = g_px, y=g_py, z= g_pz)
+			position = Point(x = g_px, y=g_py, z= g_pz-0.005)
 			orientation = Quaternion(x=g_ox,y=g_oy,z=g_oz,w=g_ow)
 			final_pose = Pose(position=position, orientation=orientation)
 			print('----------start pose----------')

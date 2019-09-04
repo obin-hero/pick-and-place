@@ -1,4 +1,4 @@
-model_checkpoint_path: "network-300"
+model_checkpoint_path: "network-980"
 all_model_checkpoint_paths: "network-200"
 all_model_checkpoint_paths: "network-220"
 all_model_checkpoint_paths: "network-240"

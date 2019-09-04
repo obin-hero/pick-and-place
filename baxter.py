@@ -111,7 +111,7 @@ class baxter(object):
 		print(pose)
 		move_return = self.move_to(pose)
 		f = self._limb.endpoint_effort()['force'].z
-		if f <= -5 :
+		if f <= -7 :
 			print('f - {0} - move up slightly'.format(f))
 			pose.position.z += self.safety_distance
 			move_return = self.move_to(pose)

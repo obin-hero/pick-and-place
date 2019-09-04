@@ -84,6 +84,7 @@ def main():
 	# streaming
 	pipeline = rs.pipeline()
 
+	
 	# Create a config and configure the pipeline to stream
 	#  different resolutions of color and depth streams
 	config = rs.config()
@@ -114,8 +115,8 @@ def main():
 
 	path_pp = '/home/obin/t2b_dataset/pickandplace'
 
-	num_data = len(os.listdir(path_pp+'/data'))
-	print(num_data)
+	#num_data = len(os.listdir(path_pp+'/data'))
+	#print(num_data)
 	EPOCH = 500
 	BATCH_SIZE = 1
 	LEARNING_RATE = 1e-5
@@ -126,8 +127,7 @@ def main():
 	#with tf.Session() as sess:
 	sess = tf.Session()
 	#model = Model(sess, 8, 14, BATCH_SIZE, LEARNING_RATE, HIDDEN_UNITS)
-
-	pnp = PnP(sess)
+        pnp = PnP(sess)
 	init_baxter()
 	# Streaming loop
 	try:
@@ -256,7 +256,7 @@ def main():
 
 			elif key & 0xFF == ord('5'):
 				print("move...>!!!!")		
-				pnp.pick_and_place([start_pix_x, start_pix_y-5, 0, goal_pix_x, goal_pix_y-5, 0],depth_image)
+				pnp.pick_and_place([start_pix_x-6, start_pix_y-2, 0, goal_pix_x-6, goal_pix_y-2, 0],depth_image)
 				
 				# mean_depth = 713.3002964231947
 				# state = 'start'
