@@ -28,7 +28,7 @@ class baxter(object):
 		self._limb = baxter_interface.Limb('right')
 		self._gripper = baxter_interface.Gripper('right')
 		self.hover_distance = hover_distance
-		self.safety_distance = 0.01
+		self.safety_distance = 0.02
 		self._rs = baxter_interface.RobotEnable(baxter_interface.CHECK_VERSION)
 		self._init_state = self._rs.state().enabled
 		self._verbose = False
@@ -55,7 +55,6 @@ class baxter(object):
 	    try:
 	        resp = self._iksvc(self._ikreq)
 	    except (rospy.ServiceException, rospy.ROSException), e:
-	        print("s")
 	        rospy.logerr("Service call failed: %s" % (e,))
 	        return False
 	    # Check if result valid, and type of seed ultimately used to get solution
@@ -111,7 +110,7 @@ class baxter(object):
 		print(pose)
 		move_return = self.move_to(pose)
 		f = self._limb.endpoint_effort()['force'].z
-		if f <= -7 :
+		if f <= -7.0 :
 			print('f - {0} - move up slightly'.format(f))
 			pose.position.z += self.safety_distance
 			move_return = self.move_to(pose)
@@ -142,7 +141,7 @@ class baxter(object):
 		self.move_to(pose,timeout=5)
 		for i in range(6):
 			f = self._limb.endpoint_effort()['force'].z
-			if f <= -5 :
+			if f <= -7 :
 				print('f - {0} - move up slightly'.format(f))
 				pose.position.z += self.safety_distance
 				self.move_to(pose)
