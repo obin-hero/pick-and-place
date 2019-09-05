@@ -79,92 +79,52 @@ def pretty_print_out(arr):
 
 
 class PnP(object):
-	def __init__(self,sess):
+	def __init__(self,rs, pipeline):
 		
-		#rospy.init_node("pick_and_place")
-		print('Load Pick and Place Network')
 
-		self.pick_pose_model = Model(sess,'pick_pose', 3, 3)
-		self.pick_ori_models = []
-		for i in range(3): 
-		    pick_ori_model = Model(sess,'pick_ori_'+str(i), 3, 4)
-		    self.pick_ori_models.append(pick_ori_model)
-		# pick 7 
-		self.place_pose_model = Model(sess,'place_pose', 6, 3)
-		#self.place_z_model = Model(sess,'place_z', 1, 1)
-		self.place_ori_models = []
-		for i in range(3): 
-		    place_ori_model = Model(sess,'place_ori_'+str(i),7,4)
-		    self.place_ori_models.append(place_ori_model)
-
-		saver = tf.train.Saver()
-		checkpoint = tf.train.get_checkpoint_state("saved_networks/to")
-		if checkpoint and checkpoint.model_checkpoint_path:
-			saver.restore(sess, checkpoint.model_checkpoint_path)
-			print("Successfully loaded:", checkpoint.model_checkpoint_path)
-		else:
-			print("Could not find trained network weights")
 
 		self.retry = 6
 		self.init_baxter()
+		self.rs = rs
+		self.pipeline = pipeline
 
 
 	def pick_and_place(self,input_arr,depth_image):
+		kernel = np.ones((10,10),np.float32)/100
+		depth_image = cv2.filter2D(depth_image,-1,kernel)
+		frames = self.pipeline.wait_for_frames()
+		# frames.get_depth_frame() is a 640x360 depth image
+		color_frame = frames.get_color_frame()
+		intrin = color_frame.profile.as_video_stream_profile().intrinsics
 
-		'''
+		start_pix_x, start_pix_y, pick_ori, goal_pix_x, goal_pix_y, place_ori = input_arr
+		robot = baxter()
+		depth_pixel = [555 - int(start_pix_x * 380/256.), 420 - int(start_pix_y * 380/256.)]
+		#depth_pixel = [start_pix_x, start_pix_y]
+		#depth = np.array(aligned_depth_frame.data)[depth_pixel[1], depth_pixel[0]] * 0.001 #self._depth_scale
+		depth = depth_image[start_pix_y,start_pix_x] * 0.001
+		point = self.rs.rs2_deproject_pixel_to_point(intrin, depth_pixel, depth)
 
-		* input_arr shape(6,1) or (4,1)
+		pose_x, pose_y, pose_z = point
+		print(point)
+		position = Point(x = 0.675 - pose_y, y= - 0.3 - pose_x + 0.03, z= 0.49 - pose_z - 0.025)
+		orientation = Quaternion(x=0.0,y=1.0,z=0.0,w=0.0)
+		start_pose = Pose(position=position, orientation=orientation)
+		print(start_pose)
+		pick_return = robot.pick(start_pose)
 
-		[start_pixel_x, start_pixel_y, pick_orientation,goal_pixel_x, goal_pixel_y, goal_orientation]
-		or
-		[start_pixel_x, start_pixel_y, goal_pixel_x, goal_pixel_y]
+		depth_pixel = [555 - int(goal_pix_x * 380/256.), 420 - int(goal_pix_y * 380/256.)]
+		#depth_pixel = [goal_pix_x, goal_pix_y]
+		#depth = np.array(aligned_depth_frame.data)[depth_pixel[1], depth_pixel[0]] * 0.001 #self._depth_scale
+		depth = depth_image[start_pix_y,start_pix_x] * 0.001
+		point = self.rs.rs2_deproject_pixel_to_point(intrin, depth_pixel, depth)
 
-		- if orientation is not specified, we'll set it to 0
-		
-		* pick_orientation / goal_orientation 
-		which direction should the robot pick/place a block, 
-		horizontally - 0, vertical & in the right - 1, vertical & in the left -2
-
-		'''
-		print('Start Pick and Place')
-
-		state = 'start'
-		for i in range(self.retry):
-			print('retry?')
-			answer = []
-			print(input_arr)
-			x = np.array(self.preprocess_data(input_arr,depth_image))
-			print('x : ',x)
-			pre_pos = np.squeeze(self.pick_pose_model.predict(x[0:3].reshape(-1,3)))
-			pick_ori_model = self.pick_ori_models[int(x[3])]
-			pre_ori = pick_ori_model.predict(x[0:3].reshape(-1,3))[0]
-			answer.extend(pre_pos)
-			answer.extend(pre_ori)
-
-			inp = np.concatenate([x[4:7],pre_pos]).reshape(-1,6)
-			answer.extend(self.place_pose_model.predict(inp)[0])
-			place_ori_model = self.place_ori_models[int(x[7])]
-			inp = np.concatenate([x[4:7],pre_ori]).reshape(-1,7)
-			answer.extend(place_ori_model.predict(inp)[0])
-
-			move_return = self.move_baxter(np.array(answer),state,'pnp')
-			if move_return == 0 : 
-				print('nice!') 
-				break
-			elif move_return == 1 :
-				# pick falied
-				print('retry pick {0}'.format(i))
-				input_arr[0] += np.random.randint(-1,2)*5
-				input_arr[1] += np.random.randint(-1,2)*5
-				state = 'start'
-				continue
-			elif move_return == 2 :
-				# place falied
-				print('retry place {0}'.format(i))
-				input_arr[3] += np.random.randint(-1,2)*5
-				input_arr[4] += np.random.randint(-1,2)*5
-				state = 'picked'
-				continue
+		pose_x, pose_y, pose_z = point
+		print(point)
+		position = Point(x = 0.675 - pose_y, y= - 0.3 - pose_x + 0.03, z= 0.49 - pose_z + 0.0)	            
+		orientation = Quaternion(x=0,y=1,z=0,w=0)
+		final_pose = Pose(position=position, orientation=orientation)
+		place_return = robot.place(final_pose)
 
 	def preprocess_data(self, input_arr, depth_image):
 		
@@ -236,10 +196,10 @@ class PnP(object):
 			print('pick and place mode')
 			s_px, s_py, s_pz, s_ox, s_oy, s_oz, s_ow, g_px, g_py, g_pz, g_ox, g_oy, g_oz, g_ow = poses
 
-			position = Point(x = s_px, y=s_py, z= s_pz)
+			position = Point(x = s_px, y=s_py, z= s_pz-0.005)
 			orientation = Quaternion(x=s_ox,y=s_oy,z=s_oz,w=s_ow)
 			start_pose = Pose(position=position, orientation=orientation)
-			position = Point(x = g_px, y=g_py, z= g_pz)
+			position = Point(x = g_px, y=g_py, z= g_pz-0.005)
 			orientation = Quaternion(x=g_ox,y=g_oy,z=g_oz,w=g_ow)
 			final_pose = Pose(position=position, orientation=orientation)
 			print('----------start pose----------')
