@@ -24,6 +24,7 @@ from baxter_core_msgs.msg import EndpointState
 
 from PickandPlace import PnP
 
+
 def draw_circle(event,x,y,flags,param):
     global mouseX,mouseY
     if event == cv2.EVENT_LBUTTONDBLCLK:
@@ -68,10 +69,21 @@ def pos_callback(data):
 def init_baxter():
 	robot = baxter()
 
-	position = Point(x = 0.675, y=0.0, z= 0.4)
+	position = Point(x = 0.675, y=-0.3, z= 0.4)
 	orientation = Quaternion(x=0.0,y=1.0,z=0.0,w=0.0)
 	pose = Pose(position=position, orientation=orientation)
 	robot.gripper_open()
+	robot.move_to(pose)
+	
+def move_baxter(pose_x, pose_y, pose_z, mode='pick'):
+	robot = baxter()
+ 	if mode == 'pick' : 
+	    position = Point(x = 0.700 - pose_y, y= - 0.3 - pose_x + 0.03, z= 0.49 - pose_z - 0.025)
+	else :
+	    position = Point(x = 0.725 - pose_y, y=0.0 - pose_x, z= 0.5 - pose_z + 0.05)
+	orientation = Quaternion(x=0.0,y=1.0,z=0.0,w=0.0)
+	pose = Pose(position=position, orientation=orientation)
+	#robot.gripper_open()
 	robot.move_to(pose)
 
 
@@ -114,29 +126,24 @@ def main():
 
 	path_pp = '/home/obin/t2b_dataset/pickandplace'
 
-	num_data = len(os.listdir(path_pp+'/data'))
-	print(num_data)
 	EPOCH = 500
 	BATCH_SIZE = 1
 	LEARNING_RATE = 1e-5
 	HIDDEN_UNITS = 8
 	SAVE = 20
 	VALID = 5
-	tf.reset_default_graph()
-	#with tf.Session() as sess:
-	sess = tf.Session()
-	#model = Model(sess, 8, 14, BATCH_SIZE, LEARNING_RATE, HIDDEN_UNITS)
 
-	pnp = PnP(sess)
+	pnp = PnP(rs,pipeline)
 	init_baxter()
+	robot = baxter()
 	# Streaming loop
 	try:
 		while True:
 			# Get frameset of color and depth
 			frames = pipeline.wait_for_frames()
 			# frames.get_depth_frame() is a 640x360 depth image
-
-			# Align the depth frame to color frame
+			color_frame = frames.get_color_frame()
+			intrin = color_frame.profile.as_video_stream_profile().intrinsics
 			aligned_frames = align.process(frames)
 
 			# Get aligned frames
@@ -154,21 +161,13 @@ def main():
 			img_center = [250, 365]
 			img_width = 190
 			color_image = color_image[img_center[0]-img_width:img_center[0]+img_width,
-			                          img_center[1]-img_width:img_center[1]+img_width, :]
+			                         img_center[1]-img_width:img_center[1]+img_width, :]
 			depth_image = depth_image[img_center[0]-img_width:img_center[0]+img_width,
-			                          img_center[1]-img_width:img_center[1]+img_width]
+			                         img_center[1]-img_width:img_center[1]+img_width]
 			color_image = resize(np.fliplr(np.flipud(color_image)), [256, 256], preserve_range=False)
 			depth_image = resize(np.fliplr(np.flipud(depth_image)), [256, 256], preserve_range=True)
 
-			#color_image = color_image / 255.0
 
-			# Remove background - Set pixels further than clipping_distance to grey
-			# grey_color = 153
-			# depth_image_3d = np.dstack(
-			#    (depth_image, depth_image, depth_image))  # depth image is 1 channel, color is 3 channels
-			# bg_removed = np.where((depth_image_3d > clipping_distance) | (depth_image_3d <= 0), grey_color, color_image)
-
-			# Render images
 			depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.03)*25, cv2.COLORMAP_JET)
 			global images 
 			images = np.hstack((color_image, depth_colormap)) #bg_removed
@@ -181,26 +180,19 @@ def main():
 				images = cv2.circle(images, (goal_pix_x,goal_pix_y), 3, (0,255,0), -1)
 			except : pass
 			cv2.namedWindow('Align Example', cv2.WINDOW_AUTOSIZE)
-			cv2.imshow('Align Example', images)
+			cv2.imshow('Align Example', images[:,:,[2,1,0]])
 			cv2.setMouseCallback('Align Example',draw_circle)
 
 			key = cv2.waitKey(1)
-	        # Press esc or 'q' to close the image window, 's' to save files
+			# Press esc or 'q' to close the image window, 's' to save files
 			if key & 0xFF == ord('q') or key == 27:
 				cv2.destroyAllWindows()
 				break
-			elif key & 0xFF == ord('s'):
-				print('Start: Saving %04d data to the path...' % (num_data))
-				scipy.misc.imsave(os.path.join(path_image, '%04d.png'%(num_data)), color_image)
-				joblib.dump(depth_image, os.path.join(path_depth, '%04d.dat.gz'%(num_data)))
-				#joblib.dump([robot_pose,robot_orientation],os.path.join())
-				print('Done : Saved %04d data to the path...' % (num_data))
-				print('=======================================')
-				num_data += 1
+
 			elif key & 0xFF == ord('c'):
 				start_depth = depth_image[mouseY,mouseX]
 				print('set start pose x: {0}, y: {1}, d: {2}'.format(mouseX,mouseY, start_depth))
-				print('in case of : {0}'.format(depth_image[mouseX,mouseY]))
+				print('in case of : {0}'.format(np.asanyarray(aligned_depth_frame.get_data())[mouseY,mouseX]))
 				start_pix_x = mouseX
 				start_pix_y = mouseY
 
@@ -210,96 +202,33 @@ def main():
 				goal_pix_x = mouseX
 				goal_pix_y = mouseY
 
-			elif key & 0xFF == ord('m'):
-				#print('move..!')
-				print('=======================================')
-				print('move..! start ({0},{1}) -> goal ({2},{3})'.format(start_pix_x,start_pix_y,goal_pix_x,goal_pix_y))
-				#move_baxter([start_pix_x,start_pix_y],[goal_pix_x,goal_pix_y])
-				scipy.misc.imsave(os.path.join(path_pp, 'image/%04d.png'%(num_data)), color_image)
-				joblib.dump(depth_image, os.path.join(path_pp, 'depth/%04d.dat.gz'%(num_data)))
-				curr_data = dict()
-				curr_data['image'] = color_image
-				curr_data['depth'] = depth_image
-				curr_data['start_pix'] = [start_pix_x, start_pix_y]
-				curr_data['goal_pix'] = [goal_pix_x,goal_pix_y]
-
-			elif key & 0xFF == ord('1'):
-				print('mode : horizontal orientation')
-				curr_data['orientation'] = 0
-			elif key & 0xFF == ord('2'):
-				print('mode : vertical orientation')
-				curr_data['orientation'] = 1
 
 			elif key & 0xFF == ord('a'):
 				print(robot_pose)
 				print(robot_orientation)
 				print('\n')
-			elif key & 0xFF == ord('p'):
-				print("Pick pose", robot_pose, robot_orientation)
-				curr_data['pick'] = np.array([robot_pose, robot_orientation])
-				robot = baxter()
-				robot.gripper_close()
 
-			elif key & 0xFF == ord('l'):
-				print("Place pose", robot_pose, robot_orientation)
-				curr_data['place'] = np.array([robot_pose, robot_orientation])
-				joblib.dump(curr_data, os.path.join(path_pp,'data/%04d.dat.gz'%(num_data)))
-				print('Done : Saved %04d data to the path...' % (num_data))
-				print('=======================================')
-				num_data += 1
-				robot = baxter()
-				robot.gripper_open()
 
 			elif key & 0xFF == ord('i'):
 				print("initialize baxter")
 				init_baxter()
+			elif key & 0xFF == ord('n'):
+				robot.gripper_open()
 
-			elif key & 0xFF == ord('5'):
-				print("move...>!!!!")		
-				pnp.pick_and_place([start_pix_x, start_pix_y-5, 0, goal_pix_x, goal_pix_y-5, 0],depth_image)
+			elif key & 0xFF == ord('m'):
+				robot.gripper_close()
 				
-				# mean_depth = 713.3002964231947
-				# state = 'start'
-				# for i in range(6):
-				# 	sz = (depth_image[start_pix_y,start_pix_x]-mean_depth)/mean_depth
-				# 	gz = (depth_image[goal_pix_y,goal_pix_x]-mean_depth)/mean_depth
-
-				# 	start_x = (start_pix_x-128)/128.0
-				# 	start_y = (start_pix_y-128)/128.0
-				# 	goal_x = (goal_pix_x-128)/128.0
-				# 	goal_y = (goal_pix_y-128)/128.0
-				# 	x = np.array([start_x, start_y, sz, 0, goal_x, goal_y,gz, 0])
-
-				# 	answer = []
-
-				# 	answer.extend(np.squeeze(pick_pose_model.predict(x[0:2].reshape(-1,2))))
-				# 	answer.extend(pick_z_model.predict(x[2].reshape(-1,1))[0])
-				# 	pick_ori_model = pick_ori_models[int(x[3])]
-				# 	answer.extend(pick_ori_model.predict(x[0:3].reshape(-1,3))[0])
-
-				# 	answer.extend(place_pose_model.predict(x[4:6].reshape(-1,2))[0])
-				# 	answer.extend(place_z_model.predict(x[6].reshape(-1,1))[0])
-				# 	place_ori_model = place_ori_models[int(x[7])]
-				# 	answer.extend(place_ori_model.predict(x[4:7].reshape(-1,3))[0])
-
-				# 	#y = model.predict(np.array(x).reshape(-1,8))
-				# 	answer[9] = -0.10
-				# 	move_return = move_baxter(np.array(answer),state)
-				# 	if move_return == 0 : 
-				# 		print('break!')
-				# 		break
-				# 	elif move_return == 1 :
-				# 		print('retry pick {0}'.format(i))
-				# 		start_pix_x += np.random.randint(-1,2)*5
-				# 		start_pix_y += np.random.randint(-1,2)*5
-				# 		state = 'start'
-				# 		continue
-				# 	elif move_return == 2 :
-				# 		print('retry place {0}'.format(i))
-				# 		goal_pix_x += np.random.randint(-1,2)*5
-				# 		goal_pix_y += np.random.randint(-1,2)*5
-				# 		state = 'picked'
-				# 		continue
+			elif key & 0xFF == ord('7'):
+			    depth_pixel = [555 - int(start_pix_x * 380/256.), 420 - int(start_pix_y * 380/256.)]
+			    #depth_pixel = [start_pix_x, start_pix_y]
+			    depth = np.array(aligned_depth_frame.data)[depth_pixel[1], depth_pixel[0]] * 0.001 #self._depth_scale
+			    print(depth)
+			    point = rs.rs2_deproject_pixel_to_point(intrin, depth_pixel, depth)
+			    print(point)
+			    move_baxter(point[0], point[1], point[2],'pick')
+			    
+			elif key & 0xFF == ord('5'):
+			    pnp.pick_and_place([start_pix_x, start_pix_y, 0, goal_pix_x, goal_pix_y, 0],depth_image)
 
 
 	finally:
