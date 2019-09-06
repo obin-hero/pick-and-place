@@ -12,12 +12,13 @@ from geometry_msgs.msg import (
     Quaternion,
 )
 
-
+# EXAMPLE
+# from PickandPlace import PnP
+# pnp = PnP(rs,pipeline) # realsense , pipeline
+# pnp.pick_and_place([start_pix_x, start_pix_y, 0, goal_pix_x, goal_pix_y, 0],depth_image)
 
 class PnP(object):
 	def __init__(self,rs, pipeline):
-		
-
 
 		self.retry = 6
 		self.init_baxter()
@@ -30,13 +31,13 @@ class PnP(object):
 		kernel = np.ones((10,10),np.float32)/100
 		depth_image = cv2.filter2D(depth_image,-1,kernel)
 
-        # get color intrinsics
+		# get color intrinsics
 		frames = self.pipeline.wait_for_frames()
 		color_frame = frames.get_color_frame()
 		intrin = color_frame.profile.as_video_stream_profile().intrinsics
 
 		start_pix_x, start_pix_y, pick_ori, goal_pix_x, goal_pix_y, place_ori = input_arr
-		
+
 		# get start pose 
 		depth_pixel = [555 - int(start_pix_x * 380/256.), 420 - int(start_pix_y * 380/256.)] # for resized/cropped image
 		depth = depth_image[start_pix_y,start_pix_x] * 0.001
@@ -64,7 +65,7 @@ class PnP(object):
 		final_pose = Pose(position=position, orientation=orientation)
 		place_return = robot.place(final_pose)
 
-	
+
 	def init_baxter(self):
 		robot = baxter()
 		position = Point(x = 0.675, y=-0.3, z= 0.4)
@@ -72,7 +73,7 @@ class PnP(object):
 		pose = Pose(position=position, orientation=orientation)
 		robot.gripper_open()
 		robot.move_to(pose)
-		
+
 
 
 
